@@ -1,0 +1,6 @@
+{
+  "name": "Multimodal Medical AI Clinical Dashboard",
+  "description": "Clinical-grade diagnostic dashboard integrating Deep Learning Ultrasound Plane CNN with Grad-CAM explainability, maternal cfDNA chromosomal screening (SVM), and Google AI Studio Gemini multimodal diagnostic synthesis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
