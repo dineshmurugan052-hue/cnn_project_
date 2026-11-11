@@ -54,6 +54,17 @@ export interface GenomicFindings extends GenomicParameters {
   lowFetalFraction: boolean;
   ageAdjustedRisk: string;
   posteriorRiskRatio: string;
+  // Biostatistical Probability Terms & Confidence Reserves
+  priorProbability: number;
+  likelihoodRatio: number;
+  posteriorProbability: number;
+  ppv: number;
+  npv: number;
+  confidenceIntervalReserve: {
+    lower: number;
+    upper: number;
+  };
+  fetalFractionReserveBuffer: number;
 }
 
 export interface PatientInfo {

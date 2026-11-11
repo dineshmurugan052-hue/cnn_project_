@@ -7,7 +7,7 @@ import path from 'path';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.NODE_ENV === 'production' && process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Increase payload limits for base64 ultrasound scans
 app.use(express.json({ limit: '50mb' }));
@@ -50,7 +50,7 @@ Detail the next diagnostic steps:
 Maintain objective, authoritative medical nomenclature. Use precise clinical terminology.`;
 
 // API Routes
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (req: any, res: any) => {
   res.json({
     status: 'ok',
     hasApiKey: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'),
@@ -58,7 +58,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.post('/api/gemini/synthesize', async (req, res) => {
+app.post('/api/gemini/synthesize', async (req: any, res: any) => {
   try {
     const {
       ultrasoundFindings,
@@ -208,7 +208,7 @@ async function startServer() {
   } else {
     const distPath = path.resolve('dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*', (req: any, res: any) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

@@ -9,9 +9,13 @@ import {
   BarChart3,
   Layers,
   HelpCircle,
+  Calculator,
+  BookOpen,
+  ShieldCheck,
 } from 'lucide-react';
 import { GenomicParameters, GenomicFindings } from '../types/clinical';
 import { evaluateGenomicSVM } from '../utils/genomicClassifier';
+import { ProbabilityTermsModal } from './ProbabilityTermsModal';
 
 interface GenomicTabProps {
   parameters: GenomicParameters;
@@ -29,6 +33,7 @@ export const GenomicTab: React.FC<GenomicTabProps> = ({
   maternalAge = 34,
 }) => {
   const [params, setParams] = useState<GenomicParameters>(parameters);
+  const [isProbabilityModalOpen, setIsProbabilityModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     setParams(parameters);
@@ -461,8 +466,110 @@ export const GenomicTab: React.FC<GenomicTabProps> = ({
               </div>
             </div>
           )}
+
+          {/* Biostatistical Probability Terms & Confidence Reserves Panel */}
+          {findings && (
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-xl flex flex-col gap-3">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Calculator className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-200 font-mono">
+                    Biostatistical Probability Terms & Statistical Reserves
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => setIsProbabilityModalOpen(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-800/80 rounded-lg transition-colors cursor-pointer"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Probability Terms Dictionary</span>
+                </button>
+              </div>
+
+              {/* 4 Probability Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                  <span className="text-[10px] text-slate-400 block uppercase font-mono">Prior Prob $P(D)$</span>
+                  <strong className="text-slate-100 font-mono text-sm tabular-nums">
+                    {(findings.priorProbability * 100).toFixed(3)}%
+                  </strong>
+                  <span className="text-[10px] text-slate-500 block truncate">{findings.ageAdjustedRisk}</span>
+                </div>
+
+                <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                  <span className="text-[10px] text-slate-400 block uppercase font-mono">Likelihood Ratio (LR)</span>
+                  <strong className="text-cyan-400 font-mono text-sm tabular-nums">
+                    {findings.likelihoodRatio.toFixed(1)}x
+                  </strong>
+                  <span className="text-[10px] text-slate-500 block">
+                    {findings.isHighRisk ? 'Positive LR+' : 'Negative LR-'}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                  <span className="text-[10px] text-slate-400 block uppercase font-mono">Posterior Prob $P(D|Z)$</span>
+                  <strong
+                    className={`font-mono text-sm tabular-nums font-bold ${
+                      findings.isHighRisk ? 'text-rose-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    {(findings.posteriorProbability * 100).toFixed(1)}%
+                  </strong>
+                  <span className="text-[10px] text-slate-500 block">Bayesian Odds</span>
+                </div>
+
+                <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
+                  <span className="text-[10px] text-slate-400 block uppercase font-mono">
+                    {findings.isHighRisk ? 'PPV Term' : 'NPV Term'}
+                  </span>
+                  <strong className="text-slate-100 font-mono text-sm tabular-nums">
+                    {findings.isHighRisk ? `${findings.ppv}%` : `${findings.npv}%`}
+                  </strong>
+                  <span className="text-[10px] text-slate-500 block">
+                    {findings.isHighRisk ? 'Positive Predictive' : 'Negative Predictive'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Statistical Confidence Reserves Band */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs font-mono">
+                <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex flex-col gap-1">
+                  <span className="text-slate-400 text-[11px]">95% CI Statistical Reserve Band:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-cyan-300 font-bold">
+                      [{findings.confidenceIntervalReserve.lower} — {findings.confidenceIntervalReserve.upper}]
+                    </span>
+                    <span className="text-[10px] text-slate-500">(±1.96·SE, Analytical Buffer)</span>
+                  </div>
+                </div>
+
+                <div className="p-2.5 bg-slate-950/60 border border-slate-800 rounded-lg flex flex-col gap-1">
+                  <span className="text-slate-400 text-[11px]">Fetal Fraction Analytical Reserve Buffer:</span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`font-bold ${
+                        findings.fetalFractionReserveBuffer >= 0 ? 'text-emerald-400' : 'text-amber-400'
+                      }`}
+                    >
+                      {findings.fetalFractionReserveBuffer >= 0
+                        ? `+${findings.fetalFractionReserveBuffer}% Margin Over 4.0%`
+                        : `${findings.fetalFractionReserveBuffer}% Deficient`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Biostatistical Probability Terms & Reserves Reference Modal */}
+      <ProbabilityTermsModal
+        isOpen={isProbabilityModalOpen}
+        onClose={() => setIsProbabilityModalOpen(false)}
+        findings={findings}
+      />
     </div>
   );
 };

@@ -137,18 +137,67 @@ export function evaluateGenomicSVM(
 
   const lowFetalFraction = fetalFraction < 4.0;
 
-  // Age-adjusted baseline risk ratio (e.g. 1:1300 at 25yo, 1:350 at 34yo, 1:100 at 40yo)
+  // Age-adjusted prior probability calculation
+  let priorProb = 1 / 350;
   let ageBaseline = '1 : 350';
-  if (maternalAge <= 25) ageBaseline = '1 : 1,200';
-  else if (maternalAge <= 30) ageBaseline = '1 : 850';
-  else if (maternalAge <= 35) ageBaseline = '1 : 350';
-  else if (maternalAge <= 38) ageBaseline = '1 : 175';
-  else ageBaseline = '1 : 85';
+  if (maternalAge <= 25) {
+    priorProb = 1 / 1200;
+    ageBaseline = '1 : 1,200';
+  } else if (maternalAge <= 30) {
+    priorProb = 1 / 850;
+    ageBaseline = '1 : 850';
+  } else if (maternalAge <= 35) {
+    priorProb = 1 / 350;
+    ageBaseline = '1 : 350';
+  } else if (maternalAge <= 38) {
+    priorProb = 1 / 175;
+    ageBaseline = '1 : 175';
+  } else {
+    priorProb = 1 / 85;
+    ageBaseline = '1 : 85';
+  }
 
-  // Posterior risk based on cfDNA
+  // Clinical Assay Invariants: Sensitivity ~99.3%, Specificity ~99.8% for Trisomy 21
+  const sensitivity = 0.993;
+  const specificity = 0.998;
+
+  // Likelihood Ratio
+  const lrPositive = sensitivity / (1 - specificity); // ~496.5
+  const lrNegative = (1 - sensitivity) / specificity; // ~0.007
+
+  const activeLR = isHighRisk ? lrPositive : lrNegative;
+
+  // Bayesian Posterior Odds & Probability
+  const priorOdds = priorProb / (1 - priorProb);
+  const posteriorOdds = priorOdds * activeLR;
+  const posteriorProb = posteriorOdds / (1 + posteriorOdds);
+
+  // Positive Predictive Value (PPV) & Negative Predictive Value (NPV)
+  const ppv =
+    (priorProb * sensitivity) /
+    (priorProb * sensitivity + (1 - priorProb) * (1 - specificity)) *
+    100;
+  const npv =
+    ((1 - priorProb) * specificity) /
+    ((1 - priorProb) * specificity + priorProb * (1 - sensitivity)) *
+    100;
+
+  // 95% Confidence Interval Reserves for dominant Z-score (SE ~ 0.18)
+  const maxZ = Math.max(z21, z18, z13);
+  const seZ = 0.18;
+  const ciReserve = {
+    lower: Math.max(0, parseFloat((maxZ - 1.96 * seZ).toFixed(2))),
+    upper: parseFloat((maxZ + 1.96 * seZ).toFixed(2)),
+  };
+
+  // Fetal fraction analytical reserve buffer (>0% indicates safe margin over 4.0% threshold)
+  const ffReserveBuffer = parseFloat((fetalFraction - 4.0).toFixed(1));
+
+  // Posterior risk representation
   let posteriorRiskRatio = '1 : 10,000 (Low Risk)';
   if (isHighRisk) {
-    posteriorRiskRatio = '> 1 : 10 (Critical High Risk)';
+    const denom = Math.max(1, Math.round(1 / (posteriorProb || 0.1)));
+    posteriorRiskRatio = denom <= 10 ? `> 1 : 10 (Critical High Risk, ~${(posteriorProb * 100).toFixed(0)}%)` : `1 : ${denom} (High Risk)`;
   } else if (z21 > 2.5 || z18 > 2.5 || z13 > 2.5) {
     posteriorRiskRatio = '1 : 120 (Intermediate / Borderline)';
   }
@@ -162,5 +211,12 @@ export function evaluateGenomicSVM(
     lowFetalFraction,
     ageAdjustedRisk: ageBaseline,
     posteriorRiskRatio,
+    priorProbability: priorProb,
+    likelihoodRatio: activeLR,
+    posteriorProbability: posteriorProb,
+    ppv: parseFloat(ppv.toFixed(1)),
+    npv: parseFloat(npv.toFixed(2)),
+    confidenceIntervalReserve: ciReserve,
+    fetalFractionReserveBuffer: ffReserveBuffer,
   };
 }
